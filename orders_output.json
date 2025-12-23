@@ -1,0 +1,22 @@
+[
+  {
+    "numero_commande": "2025-04",
+    "entreprise_cliente": "Marjane Market",
+    "type_produit": "Sac fond carré sans poignées",
+    "nature_produit": "Sacs Kraft Fond Carré (Format Standard)",
+    "quantite": 15000,
+    "unite": "unités",
+    "date_commande": "2025-12-23",
+    "date_livraison": null,
+    "prix_unitaire": null,
+    "prix_total": null,
+    "devise": null,
+    "informations_supplementaires": "Livraison : Entrepôt de Casablanca",
+    "confiance": 95,
+    "est_bon_commande": true,
+    "email_id": "262",
+    "email_subject": "Commande Urgente - Tecpap - Bons de commande N°2025-04",
+    "email_from": "Walid Loukili <loukiliwalid2004@gmail.com>",
+    "processed_at": "2025-12-23T21:43:37.353597"
+  }
+]
