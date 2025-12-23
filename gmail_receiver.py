@@ -156,31 +156,55 @@ class GmailReceiver:
         return body
     
     def _get_attachments_info(self, msg):
-        """Get list of attachment filenames."""
+        """Get list of attachment filenames (including inline images)."""
         attachments = []
         
         if msg.is_multipart():
             for part in msg.walk():
+                content_type = part.get_content_type()
                 content_disposition = str(part.get("Content-Disposition"))
                 
-                if "attachment" in content_disposition:
+                # Check for traditional attachments
+                is_attachment = "attachment" in content_disposition
+                
+                # Check for inline images
+                is_inline_image = (
+                    content_type.startswith("image/") and 
+                    content_type != "image/signature"
+                )
+                
+                if is_attachment or is_inline_image:
                     filename = part.get_filename()
+                    if not filename and is_inline_image:
+                        # Generate filename for inline images
+                        ext = content_type.split("/")[-1]
+                        filename = f"inline_image.{ext}"
+                    
                     if filename:
-                        filename, encoding = decode_header(filename)[0]
                         if isinstance(filename, bytes):
-                            filename = filename.decode(encoding or "utf-8")
+                            filename = filename.decode("utf-8")
+                        else:
+                            try:
+                                decoded, encoding = decode_header(filename)[0]
+                                if isinstance(decoded, bytes):
+                                    filename = decoded.decode(encoding or "utf-8")
+                                else:
+                                    filename = decoded
+                            except:
+                                pass
                         attachments.append(filename)
         
         return attachments
     
     def download_attachments(self, email_id, save_dir="attachments"):
-        """Download all attachments from an email."""
+        """Download all attachments from an email (including inline images)."""
         if not self.connection:
             print("❌ Non connecté. Appelez connect() d'abord.")
             return []
         
         os.makedirs(save_dir, exist_ok=True)
         downloaded = []
+        image_counter = 0
         
         try:
             self.connection.select("INBOX")
@@ -195,21 +219,47 @@ class GmailReceiver:
                     
                     if msg.is_multipart():
                         for part in msg.walk():
+                            content_type = part.get_content_type()
                             content_disposition = str(part.get("Content-Disposition"))
                             
-                            if "attachment" in content_disposition:
+                            # Check for traditional attachments
+                            is_attachment = "attachment" in content_disposition
+                            
+                            # Check for inline images
+                            is_inline_image = (
+                                content_type.startswith("image/") and 
+                                content_type != "image/signature"
+                            )
+                            
+                            if is_attachment or is_inline_image:
                                 filename = part.get_filename()
+                                
+                                if not filename and is_inline_image:
+                                    # Generate filename for inline images
+                                    ext = content_type.split("/")[-1]
+                                    image_counter += 1
+                                    filename = f"inline_image_{image_counter}.{ext}"
+                                
                                 if filename:
-                                    filename, encoding = decode_header(filename)[0]
                                     if isinstance(filename, bytes):
-                                        filename = filename.decode(encoding or "utf-8")
+                                        filename = filename.decode("utf-8")
+                                    else:
+                                        try:
+                                            decoded, encoding = decode_header(filename)[0]
+                                            if isinstance(decoded, bytes):
+                                                filename = decoded.decode(encoding or "utf-8")
+                                            else:
+                                                filename = decoded
+                                        except:
+                                            pass
                                     
                                     filepath = os.path.join(save_dir, filename)
-                                    with open(filepath, "wb") as f:
-                                        f.write(part.get_payload(decode=True))
-                                    
-                                    downloaded.append(filepath)
-                                    print(f"   📥 Téléchargé: {filename}")
+                                    payload = part.get_payload(decode=True)
+                                    if payload:
+                                        with open(filepath, "wb") as f:
+                                            f.write(payload)
+                                        downloaded.append(filepath)
+                                        print(f"   📥 Téléchargé: {filename}")
             
             return downloaded
             

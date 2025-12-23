@@ -1,5 +1,45 @@
 [
   {
+    "numero_commande": null,
+    "entreprise_cliente": "Ch'hiwat Fès",
+    "type_produit": "Sac fond carré avec poignées plates",
+    "nature_produit": "sacs poignées plates (hadouk lli kano f le dernier échantillon)",
+    "quantite": 8000,
+    "unite": "pièces",
+    "date_commande": "2025-12-23",
+    "date_livraison": null,
+    "prix_unitaire": null,
+    "prix_total": null,
+    "devise": null,
+    "informations_supplementaires": "Pour le paiement, ghadi n-viri likom l'avance lyouma f l'3chiya.",
+    "confiance": 85,
+    "est_bon_commande": true,
+    "email_id": "264",
+    "email_subject": "",
+    "email_from": "Walid Loukili <loukiliwalid2004@gmail.com>",
+    "processed_at": "2025-12-23T22:03:50.459375"
+  },
+  {
+    "numero_commande": null,
+    "entreprise_cliente": "Supermarché Nour",
+    "type_produit": "Sac fond carré sans poignées",
+    "nature_produit": "sacs fond carré en marron",
+    "quantite": 3000,
+    "unite": "pièces",
+    "date_commande": "2025-12-23",
+    "date_livraison": null,
+    "prix_unitaire": null,
+    "prix_total": null,
+    "devise": null,
+    "informations_supplementaires": "Commande urgente pour ouverture nouvelle",
+    "confiance": 85,
+    "est_bon_commande": true,
+    "email_id": "263",
+    "email_subject": "Commande de sacs - Urgent",
+    "email_from": "Walid Loukili <loukiliwalid2004@gmail.com>",
+    "processed_at": "2025-12-23T22:03:53.620273"
+  },
+  {
     "numero_commande": "2025-04",
     "entreprise_cliente": "Marjane Market",
     "type_produit": "Sac fond carré sans poignées",
@@ -11,12 +51,12 @@
     "prix_unitaire": null,
     "prix_total": null,
     "devise": null,
-    "informations_supplementaires": "Livraison : Entrepôt de Casablanca",
-    "confiance": 95,
+    "informations_supplementaires": "Livraison à l'entrepôt de Casablanca",
+    "confiance": 90,
     "est_bon_commande": true,
     "email_id": "262",
     "email_subject": "Commande Urgente - Tecpap - Bons de commande N°2025-04",
     "email_from": "Walid Loukili <loukiliwalid2004@gmail.com>",
-    "processed_at": "2025-12-23T21:43:37.353597"
+    "processed_at": "2025-12-23T22:03:56.164651"
   }
 ]
