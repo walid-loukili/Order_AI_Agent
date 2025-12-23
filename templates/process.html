@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Traiter les Emails - Gestion Commandes{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-8">
+    <!-- Header -->
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Traitement des Emails</h1>
+        <p class="text-gray-600">Analysez les nouveaux emails pour détecter les bons de commande</p>
+    </div>
+
+    <!-- Process Card -->
+    <div class="bg-white rounded-xl shadow-md p-8">
+        <div class="text-center space-y-6">
+            <div class="bg-indigo-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto">
+                <i class="fas fa-envelope-open-text text-indigo-600 text-4xl"></i>
+            </div>
+            
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">Analyser les emails récents</h2>
+                <p class="text-gray-600">Le système va récupérer les derniers emails et utiliser l'IA pour extraire les bons de commande.</p>
+            </div>
+
+            <button id="processBtn" onclick="processEmails()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-lg text-lg font-medium transition inline-flex items-center space-x-3">
+                <i class="fas fa-play"></i>
+                <span>Lancer le traitement</span>
+            </button>
+        </div>
+
+        <!-- Progress Section (hidden by default) -->
+        <div id="progressSection" class="hidden mt-8 space-y-4">
+            <div class="border-t pt-6">
+                <div class="flex items-center space-x-4">
+                    <div id="spinner" class="animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+                    <span id="progressText" class="text-gray-700">Connexion à Gmail...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (hidden by default) -->
+        <div id="resultsSection" class="hidden mt-8">
+            <div class="border-t pt-6">
+                <div id="successResult" class="hidden text-center space-y-4">
+                    <div class="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-check text-green-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800">Traitement terminé !</h3>
+                    <p id="resultMessage" class="text-gray-600"></p>
+                    <a href="/orders?status=en_attente" class="inline-block bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition">
+                        <i class="fas fa-list mr-2"></i>Voir les commandes en attente
+                    </a>
+                </div>
+
+                <div id="errorResult" class="hidden text-center space-y-4">
+                    <div class="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800">Erreur</h3>
+                    <p id="errorMessage" class="text-red-600"></p>
+                    <button onclick="location.reload()" class="inline-block bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition">
+                        <i class="fas fa-redo mr-2"></i>Réessayer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <i class="fas fa-envelope text-indigo-500 text-2xl mb-2"></i>
+            <h4 class="font-medium text-gray-800">1. Récupération</h4>
+            <p class="text-sm text-gray-500">Connexion à Gmail</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <i class="fas fa-robot text-indigo-500 text-2xl mb-2"></i>
+            <h4 class="font-medium text-gray-800">2. Analyse IA</h4>
+            <p class="text-sm text-gray-500">Extraction des données</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <i class="fas fa-database text-indigo-500 text-2xl mb-2"></i>
+            <h4 class="font-medium text-gray-800">3. Stockage</h4>
+            <p class="text-sm text-gray-500">Enregistrement en base</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function processEmails() {
+    const btn = document.getElementById('processBtn');
+    const progressSection = document.getElementById('progressSection');
+    const resultsSection = document.getElementById('resultsSection');
+    const successResult = document.getElementById('successResult');
+    const errorResult = document.getElementById('errorResult');
+    const progressText = document.getElementById('progressText');
+    
+    // Disable button and show progress
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    progressSection.classList.remove('hidden');
+    resultsSection.classList.add('hidden');
+    
+    // Simulate progress steps
+    const steps = [
+        'Connexion à Gmail...',
+        'Récupération des emails...',
+        'Analyse avec IA...',
+        'Enregistrement des commandes...'
+    ];
+    
+    let stepIndex = 0;
+    const stepInterval = setInterval(() => {
+        if (stepIndex < steps.length) {
+            progressText.textContent = steps[stepIndex];
+            stepIndex++;
+        }
+    }, 1500);
+    
+    try {
+        const response = await fetch('/api/process-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        clearInterval(stepInterval);
+        
+        const result = await response.json();
+        
+        progressSection.classList.add('hidden');
+        resultsSection.classList.remove('hidden');
+        
+        if (result.success) {
+            successResult.classList.remove('hidden');
+            errorResult.classList.add('hidden');
+            document.getElementById('resultMessage').textContent = result.message;
+        } else {
+            successResult.classList.add('hidden');
+            errorResult.classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = result.error || 'Une erreur est survenue';
+        }
+        
+    } catch (error) {
+        clearInterval(stepInterval);
+        
+        progressSection.classList.add('hidden');
+        resultsSection.classList.remove('hidden');
+        successResult.classList.add('hidden');
+        errorResult.classList.remove('hidden');
+        document.getElementById('errorMessage').textContent = error.message;
+    }
+    
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+</script>
+{% endblock %}

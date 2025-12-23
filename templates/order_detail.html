@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+
+{% block title %}Commande #{{ order.id }} - Validation{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <a href="/orders" class="text-indigo-600 hover:text-indigo-800 mb-2 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Retour aux commandes
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800">Commande #{{ order.id }}</h1>
+        </div>
+        <div class="flex items-center space-x-2">
+            {% if order.statut == 'en_attente' %}
+            <span class="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full font-medium">
+                <i class="fas fa-clock mr-2"></i>En attente de validation
+            </span>
+            {% elif order.statut == 'validee' %}
+            <span class="px-4 py-2 bg-green-100 text-green-800 rounded-full font-medium">
+                <i class="fas fa-check-circle mr-2"></i>Validée
+            </span>
+            {% elif order.statut == 'rejetee' %}
+            <span class="px-4 py-2 bg-red-100 text-red-800 rounded-full font-medium">
+                <i class="fas fa-times-circle mr-2"></i>Rejetée
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Form -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Order Details Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                    <i class="fas fa-file-invoice text-indigo-600 mr-3"></i>
+                    Détails de la commande
+                </h2>
+                
+                <form id="orderForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">N° Commande</label>
+                            <input type="text" name="numero_commande" value="{{ order.numero_commande or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date Commande</label>
+                            <input type="date" name="date_commande" value="{{ order.date_commande or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
+                        <input type="text" name="client_nom" value="{{ order.client_nom or '' }}" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type de produit</label>
+                        <select name="produit_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            {% for product in products %}
+                            <option value="{{ product.id }}" {% if order.produit_id == product.id %}selected{% endif %}>
+                                {{ product.type }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nature du produit</label>
+                        <textarea name="nature_produit" rows="2" 
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ order.nature_produit or '' }}</textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Quantité</label>
+                            <input type="number" name="quantite" value="{{ order.quantite or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Unité</label>
+                            <input type="text" name="unite" value="{{ order.unite or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date Livraison</label>
+                            <input type="date" name="date_livraison" value="{{ order.date_livraison or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prix Unitaire</label>
+                            <input type="number" step="0.01" name="prix_unitaire" value="{{ order.prix_unitaire or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Prix Total</label>
+                            <input type="number" step="0.01" name="prix_total" value="{{ order.prix_total or '' }}" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Devise</label>
+                            <select name="devise" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="MAD" {% if order.devise == 'MAD' %}selected{% endif %}>MAD</option>
+                                <option value="EUR" {% if order.devise == 'EUR' %}selected{% endif %}>EUR</option>
+                                <option value="USD" {% if order.devise == 'USD' %}selected{% endif %}>USD</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Informations supplémentaires</label>
+                        <textarea name="informations_supplementaires" rows="3" 
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ order.informations_supplementaires or '' }}</textarea>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition">
+                            <i class="fas fa-save mr-2"></i>Sauvegarder les modifications
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-6">
+            <!-- Confidence Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Niveau de confiance IA</h3>
+                <div class="text-center">
+                    <div class="relative inline-flex items-center justify-center w-32 h-32">
+                        <svg class="w-32 h-32 transform -rotate-90">
+                            <circle cx="64" cy="64" r="56" stroke="#e5e7eb" stroke-width="12" fill="none"/>
+                            <circle cx="64" cy="64" r="56" 
+                                    stroke="{% if order.confiance >= 80 %}#22c55e{% elif order.confiance >= 50 %}#eab308{% else %}#ef4444{% endif %}" 
+                                    stroke-width="12" fill="none"
+                                    stroke-dasharray="{{ (order.confiance or 0) * 3.52 }} 352"
+                                    stroke-linecap="round"/>
+                        </svg>
+                        <span class="absolute text-3xl font-bold {% if order.confiance >= 80 %}text-green-600{% elif order.confiance >= 50 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                            {{ order.confiance or 0 }}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            {% if order.statut == 'en_attente' %}
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Actions</h3>
+                <div class="space-y-3">
+                    <button onclick="validateOrder()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                        <i class="fas fa-check-circle mr-2"></i>Valider la commande
+                    </button>
+                    <button onclick="rejectOrder()" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg transition flex items-center justify-center">
+                        <i class="fas fa-times-circle mr-2"></i>Rejeter la commande
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Email Info Card -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Source Email</h3>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <span class="text-gray-500">De:</span>
+                        <p class="text-gray-800">{{ order.email_from or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Sujet:</span>
+                        <p class="text-gray-800">{{ order.email_subject or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Traité le:</span>
+                        <p class="text-gray-800">{{ order.created_at or 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300">
+    <div class="bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3">
+        <i id="toast-icon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toast-message">Message</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const orderId = {{ order.id }};
+
+function showToast(message, isSuccess = true) {
+    const toast = document.getElementById('toast');
+    const icon = document.getElementById('toast-icon');
+    const msg = document.getElementById('toast-message');
+    
+    msg.textContent = message;
+    icon.className = isSuccess ? 'fas fa-check-circle text-green-400' : 'fas fa-exclamation-circle text-red-400';
+    
+    toast.classList.remove('translate-y-full', 'opacity-0');
+    
+    setTimeout(() => {
+        toast.classList.add('translate-y-full', 'opacity-0');
+    }, 3000);
+}
+
+document.getElementById('orderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch(`/api/orders/${orderId}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        showToast(result.message, result.success);
+    } catch (error) {
+        showToast('Erreur lors de la sauvegarde', false);
+    }
+});
+
+async function validateOrder() {
+    if (!confirm('Voulez-vous valider cette commande ?')) return;
+    
+    try {
+        const response = await fetch(`/api/orders/${orderId}/validate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ validated_by: 'Commercial' })
+        });
+        
+        const result = await response.json();
+        showToast(result.message, result.success);
+        
+        if (result.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    } catch (error) {
+        showToast('Erreur lors de la validation', false);
+    }
+}
+
+async function rejectOrder() {
+    if (!confirm('Voulez-vous rejeter cette commande ?')) return;
+    
+    try {
+        const response = await fetch(`/api/orders/${orderId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        showToast(result.message, result.success);
+        
+        if (result.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    } catch (error) {
+        showToast('Erreur lors du rejet', false);
+    }
+}
+</script>
+{% endblock %}

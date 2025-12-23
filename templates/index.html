@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Tableau de bord - Gestion Commandes{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Tableau de bord</h1>
+        <a href="/process" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition">
+            <i class="fas fa-sync"></i>
+            <span>Traiter les emails</span>
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Commandes</p>
+                    <p class="text-3xl font-bold text-gray-800">{{ stats.total_orders }}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-full">
+                    <i class="fas fa-shopping-cart text-indigo-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">En attente</p>
+                    <p class="text-3xl font-bold text-yellow-600">{{ stats.pending_orders }}</p>
+                </div>
+                <div class="bg-yellow-100 p-4 rounded-full">
+                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Validées</p>
+                    <p class="text-3xl font-bold text-green-600">{{ stats.validated_orders }}</p>
+                </div>
+                <div class="bg-green-100 p-4 rounded-full">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 card-hover">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Clients</p>
+                    <p class="text-3xl font-bold text-purple-600">{{ stats.total_clients }}</p>
+                </div>
+                <div class="bg-purple-100 p-4 rounded-full">
+                    <i class="fas fa-users text-purple-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-800">Commandes récentes</h2>
+            <a href="/orders" class="text-indigo-600 hover:text-indigo-800">Voir tout →</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Commande</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantité</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for order in recent_orders %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap font-medium">{{ order.numero_commande or 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ order.client_nom or 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ order.produit_type or 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ order.quantite }} {{ order.unite or '' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if order.statut == 'en_attente' %}
+                            <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">En attente</span>
+                            {% elif order.statut == 'validee' %}
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Validée</span>
+                            {% elif order.statut == 'rejetee' %}
+                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">Rejetée</span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">{{ order.statut }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="/orders/{{ order.id }}" class="text-indigo-600 hover:text-indigo-900">
+                                <i class="fas fa-eye"></i> Voir
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-4"></i>
+                            <p>Aucune commande pour le moment</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

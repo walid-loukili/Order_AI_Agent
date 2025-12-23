@@ -189,6 +189,24 @@ class DatabaseManager:
         """Create a new order from extracted data."""
         cursor = self.connection.cursor()
         
+        # Check if order already exists (by numero_commande or email_id)
+        numero = order_data.get('numero_commande')
+        email_id = order_data.get('email_id')
+        
+        if numero:
+            cursor.execute("SELECT id FROM commandes WHERE numero_commande = ?", (numero,))
+            existing = cursor.fetchone()
+            if existing:
+                print(f"   ⚠️ Commande {numero} déjà existante (ID: {existing[0]})")
+                return existing[0]
+        
+        if email_id:
+            cursor.execute("SELECT id FROM commandes WHERE email_id = ?", (email_id,))
+            existing = cursor.fetchone()
+            if existing:
+                print(f"   ⚠️ Email déjà traité (ID: {existing[0]})")
+                return existing[0]
+        
         # Get or create client
         client_name = order_data.get('entreprise_cliente', 'Client Inconnu')
         client = self.get_or_create_client(client_name, order_data.get('email_from'))

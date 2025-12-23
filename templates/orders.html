@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Commandes - Gestion Commandes{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">Liste des commandes</h1>
+        <a href="/process" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition">
+            <i class="fas fa-plus"></i>
+            <span>Traiter nouveaux emails</span>
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-md p-4">
+        <div class="flex space-x-4">
+            <a href="/orders" class="px-4 py-2 rounded-lg {% if not current_filter %}bg-indigo-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition">
+                Toutes
+            </a>
+            <a href="/orders?status=en_attente" class="px-4 py-2 rounded-lg {% if current_filter == 'en_attente' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition">
+                <i class="fas fa-clock mr-2"></i>En attente
+            </a>
+            <a href="/orders?status=validee" class="px-4 py-2 rounded-lg {% if current_filter == 'validee' %}bg-green-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition">
+                <i class="fas fa-check mr-2"></i>Validées
+            </a>
+            <a href="/orders?status=rejetee" class="px-4 py-2 rounded-lg {% if current_filter == 'rejetee' %}bg-red-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition">
+                <i class="fas fa-times mr-2"></i>Rejetées
+            </a>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Commande</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantité</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prix Total</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confiance</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for order in orders %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">#{{ order.id }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{{ order.numero_commande or 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ order.client_nom or 'N/A' }}</td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">{{ order.produit_type or 'N/A' }}</div>
+                            <div class="text-sm text-gray-500">{{ order.nature_produit[:30] if order.nature_produit else '' }}...</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ order.quantite }} {{ order.unite or '' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if order.prix_total %}
+                            {{ order.prix_total }} {{ order.devise or 'MAD' }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if order.confiance %}
+                            <div class="flex items-center">
+                                <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="h-2 rounded-full {% if order.confiance >= 80 %}bg-green-500{% elif order.confiance >= 50 %}bg-yellow-500{% else %}bg-red-500{% endif %}" style="width: {{ order.confiance }}%"></div>
+                                </div>
+                                <span class="text-sm">{{ order.confiance }}%</span>
+                            </div>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if order.statut == 'en_attente' %}
+                            <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">En attente</span>
+                            {% elif order.statut == 'validee' %}
+                            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Validée</span>
+                            {% elif order.statut == 'rejetee' %}
+                            <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">Rejetée</span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">{{ order.statut }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="/orders/{{ order.id }}" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 transition">
+                                <i class="fas fa-edit mr-1"></i>Détails
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-inbox text-5xl mb-4 block"></i>
+                            <p class="text-lg">Aucune commande trouvée</p>
+                            <a href="/process" class="text-indigo-600 hover:underline mt-2 inline-block">Traiter des emails →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
