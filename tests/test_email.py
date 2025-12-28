@@ -30,7 +30,7 @@ class TestEmailSenderInit:
     def test_company_name_defined(self):
         """Test que le nom de l'entreprise est défini."""
         sender = EmailSender()
-        assert sender.company_name == "OrderFlow Enterprise"
+        assert sender.company_name == "TECPAP"
 
 
 class TestEmailSending:
