@@ -37,7 +37,9 @@ REORDER_PATTERNS = [
 
 class DataExtractor:
     def __init__(self, db_manager=None):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=60.0)
+        # Initialize OpenAI client only if API key is available
+        api_key = os.getenv("OPENAI_API_KEY")
+        self.client = OpenAI(api_key=api_key, timeout=60.0) if api_key else None
         self.model = "gpt-4o"
         self.db = db_manager
     

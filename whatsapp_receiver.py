@@ -23,7 +23,9 @@ class WhatsAppReceiver:
     def __init__(self):
         self.account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        self.openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # Initialize OpenAI client only if API key is available
+        api_key = os.getenv("OPENAI_API_KEY")
+        self.openai_client = OpenAI(api_key=api_key) if api_key else None
         self.twilio_client = None
         self.media_dir = "whatsapp_media"
         
