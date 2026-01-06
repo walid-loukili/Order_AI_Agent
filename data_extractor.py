@@ -2,6 +2,7 @@
 Data Extractor Module
 Uses OpenAI API to extract purchase order data from emails and attachments.
 Includes smart reorder detection using client history.
+Compatible SAGE X3 avec génération automatique des codes articles.
 """
 
 import os
@@ -18,6 +19,13 @@ import io
 sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv()
+
+# Import article code generator
+try:
+    from article_codes import suggest_article_code_from_description, generate_article_code
+except ImportError:
+    suggest_article_code_from_description = None
+    generate_article_code = None
 
 # Product types for TECPAP - Sacs en papier Kraft
 PRODUCT_TYPES = [
@@ -44,6 +52,38 @@ REORDER_PATTERNS = [
     "la même chose", "pareil", "habituelle", "comme la dernière fois",
     "bhal dima", "comme avant", "réapprovisionnement"
 ]
+
+
+def auto_generate_article_code(extracted_data):
+    """
+    Génère automatiquement un code article si non fourni.
+    Utilise les informations extraites (type_papier, grammage, laize).
+    """
+    if extracted_data.get('code_article'):
+        return extracted_data['code_article']
+    
+    if suggest_article_code_from_description:
+        # Essayer depuis la description/nature du produit
+        description = extracted_data.get('nature_produit', '') or ''
+        description += ' ' + (extracted_data.get('type_papier', '') or '')
+        
+        suggested = suggest_article_code_from_description(description)
+        if suggested and len(suggested) > 2:
+            return suggested
+    
+    if generate_article_code:
+        # Essayer avec les champs individuels
+        code = generate_article_code(
+            paper_type=extracted_data.get('type_papier'),
+            grammage=extracted_data.get('grammage'),
+            laize=extracted_data.get('laize'),
+            supplier=None
+        )
+        if code and len(code) > 2:
+            return code
+    
+    return None
+
 
 class DataExtractor:
     def __init__(self, db_manager=None):
@@ -282,7 +322,7 @@ CONTENU:
     def _extract_with_openai(self, content):
         """Use OpenAI to extract structured data from content."""
         
-        prompt = f"""Tu es un assistant spécialisé dans l'extraction de données de bons de commande.
+        prompt = f"""Tu es un assistant spécialisé dans l'extraction de données de bons de commande pour TECPAP (fabrication de sacs en papier Kraft au Maroc).
 Tu comprends le français, l'arabe et la darija marocaine (dialecte marocain).
 
 IMPORTANT - Vocabulaire Darija/Arabe pour commandes:
@@ -309,37 +349,44 @@ Patterns à reconnaître:
 - "je suis [nom]" / "c'est [nom]" → entreprise_cliente = nom
 - "de la part de [nom]" → entreprise_cliente = nom
 
-Exemples:
-- "Commande pour ecole mohamadia des ingénieurs" → entreprise_cliente: "Ecole Mohamadia des Ingénieurs"
-- "pour restaurant la plaza 100 sachets" → entreprise_cliente: "Restaurant La Plaza"
-- "أنا ريستوران صالح الدين" → entreprise_cliente: "Restaurant Salah Eddine"
-- "ana snack beldi" → entreprise_cliente: "Snack Beldi"
-- "c'est café central" → entreprise_cliente: "Café Central"
+L'entreprise fabrique 4 types de produits d'emballage (sacs en papier Kraft):
+1. Sachets fond plat - pour sandwichs, tacos, viennoiseries (code: SFP)
+2. Sac fond carré sans poignées - emballage standard (code: SFCSP)
+3. Sac fond carré avec poignées plates - sacs shopping (code: SFCPP)
+4. Sac fond carré avec poignées torsadées - sacs premium (code: SFCPT)
 
-⚠️ NE PAS utiliser le numéro de téléphone comme nom de client. Cherche toujours le nom mentionné dans le message!
-
-L'entreprise fabrique 4 types de produits d'emballage:
-1. Sachets fond plat - pour sandwichs, tacos, viennoiseries
-2. Sac fond carré sans poignées - emballage standard
-3. Sac fond carré avec poignées plates - sacs shopping
-4. Sac fond carré avec poignées torsadées - sacs premium
+CODES ARTICLES TECPAP (format: TYPE+GRAMMAGE+LAIZE+PAPIER):
+- KB = Kraft Blanchi
+- KE = Kraft Écru/Naturel
+- Format: KB100L28MON = Kraft Blanchi 100g Laize 28 MONDI
 
 Analyse le contenu suivant et extrais les informations du bon de commande.
 MÊME si le message est informel ou en darija, essaie d'identifier s'il s'agit d'une demande de commande.
 
-Retourne les données au format JSON avec les champs suivants:
+Retourne les données au format JSON avec les champs suivants (compatible SAGE X3):
 - numero_commande: string (numéro du bon de commande, peut être null)
-- entreprise_cliente: string (NOM DU CLIENT mentionné dans le message - TRÈS IMPORTANT!)
+- ligne_commande: number (ligne de commande, défaut 1)
+- site_vente: string (site de vente, défaut "SXP")
+- code_client: string (code client format CLxxxxx, peut être null)
+- entreprise_cliente: string (NOM DU CLIENT/RAISON SOCIALE - TRÈS IMPORTANT!)
+- code_article: string (code article TECPAP si détectable, ex: KB100L28MON)
 - type_produit: string (un des 4 types listés ci-dessus, déduis le type approprié)
-- nature_produit: string (détails spécifiques du produit)
+- nature_produit: string (désignation complète du produit)
 - quantite: number (quantité commandée)
-- unite: string (unité de mesure: pièces, kg, etc.)
-- date_commande: string (date du bon de commande)
-- date_livraison: string (date de livraison souhaitée, si mentionnée)
+- unite: string (unité de mesure: US, pièces, kg, etc. défaut US)
+- date_commande: string (date du bon de commande format YYYY-MM-DD)
+- date_livraison: string (date de livraison souhaitée format YYYY-MM-DD)
+- commercial: string (nom du commercial si mentionné, défaut "DIVERS")
+- type_sac: string (type de sac: KRAFT, PAPIER, etc.)
+- format_sac: string (dimensions/format LAR.PRE.LON si mentionné)
+- type_papier: string (type de papier: kraft blanchi, kraft écru, etc.)
+- grammage: number (grammage du papier en g/m² si mentionné: 60, 70, 80, 100, etc.)
+- laize: number (laize/largeur en cm si mentionné)
+- impression_client: string (type d'impression si mentionné)
 - prix_unitaire: number (prix unitaire si mentionné)
 - prix_total: number (prix total si mentionné)
 - devise: string (EUR, MAD, USD, etc. - défaut MAD au Maroc)
-- informations_supplementaires: string (autres informations pertinentes, garde le texte original aussi)
+- informations_supplementaires: string (autres informations pertinentes)
 - confiance: number (niveau de confiance de 0 à 100)
 - est_bon_commande: boolean (true si c'est une demande de produits/commande, même informelle)
 
@@ -373,7 +420,16 @@ Réponds UNIQUEMENT avec le JSON, sans texte additionnel."""
                 result = result.strip()
             
             import json
-            return json.loads(result)
+            extracted_data = json.loads(result)
+            
+            # Post-processing: Generate article code if not provided
+            if extracted_data and not extracted_data.get('code_article'):
+                auto_code = auto_generate_article_code(extracted_data)
+                if auto_code:
+                    extracted_data['code_article'] = auto_code
+                    print(f"   🏷️ Code article auto-généré: {auto_code}")
+            
+            return extracted_data
             
         except json.JSONDecodeError as e:
             print(f"   ❌ Erreur JSON: {e}")

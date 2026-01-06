@@ -371,6 +371,14 @@ def api_update_order(order_id):
     # Remove fields that shouldn't be updated directly
     updates.pop('id', None)
     updates.pop('created_at', None)
+    
+    # Recalculate reste_a_livrer if quantity fields are updated
+    if 'quantite' in updates or 'quantite_livree' in updates:
+        order = db.get_order(order_id)
+        quantite = updates.get('quantite', order.get('quantite', 0)) or 0
+        quantite_livree = updates.get('quantite_livree', order.get('quantite_livree', 0)) or 0
+        updates['reste_a_livrer'] = quantite - quantite_livree
+    
     db.update_order(order_id, updates)
     return jsonify({'success': True, 'message': 'Commande mise à jour'})
 
@@ -387,6 +395,250 @@ def api_orders():
     """Get all orders as JSON."""
     orders = db.get_all_orders()
     return jsonify(orders)
+
+
+# ============== ARTICLE CODE API ==============
+
+@app.route('/api/article-code/generate', methods=['POST'])
+def api_generate_article_code():
+    """Generate TECPAP article code."""
+    try:
+        from article_codes import generate_article_code
+        data = request.json
+        
+        code = generate_article_code(
+            paper_type=data.get('paper_type'),
+            grammage=data.get('grammage'),
+            laize=data.get('laize'),
+            supplier=data.get('supplier')
+        )
+        
+        return jsonify({
+            'success': True,
+            'code': code,
+            'paper_type': data.get('paper_type'),
+            'grammage': data.get('grammage'),
+            'laize': data.get('laize')
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/article-code/suggest', methods=['POST'])
+def api_suggest_article_code():
+    """Suggest article code from description."""
+    try:
+        from article_codes import suggest_article_code_from_description
+        data = request.json
+        description = data.get('description', '')
+        
+        code = suggest_article_code_from_description(description)
+        
+        return jsonify({
+            'success': True,
+            'code': code,
+            'description': description
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/orders/<int:order_id>/generate-code', methods=['POST'])
+def api_order_generate_code(order_id):
+    """Generate and assign article code to an order."""
+    try:
+        from article_codes import generate_article_code, suggest_article_code_from_description
+        
+        order = db.get_order(order_id)
+        if not order:
+            return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        # Try to generate code from order data
+        code = None
+        
+        # First try from specific fields
+        if order.get('type_papier') or order.get('grammage') or order.get('laize'):
+            code = generate_article_code(
+                paper_type=order.get('type_papier'),
+                grammage=order.get('grammage'),
+                laize=order.get('laize')
+            )
+        
+        # If no specific fields, try from description
+        if not code or len(code) <= 2:
+            description = f"{order.get('nature_produit', '')} {order.get('produit_type', '')}"
+            code = suggest_article_code_from_description(description)
+        
+        if code and len(code) > 2:
+            db.update_order(order_id, {'code_article': code})
+            return jsonify({
+                'success': True,
+                'code': code,
+                'message': f'Code article {code} assigné'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Impossible de générer un code, données insuffisantes'
+            }), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/orders/generate-all-codes', methods=['POST'])
+def api_generate_all_codes():
+    """Generate article codes for all orders that don't have one."""
+    try:
+        from article_codes import generate_article_code, suggest_article_code_from_description
+        
+        cursor = db.connection.cursor()
+        # Join avec produits pour avoir le type de produit
+        cursor.execute("""
+            SELECT c.id, c.nature_produit, p.type as produit_type, c.type_papier, c.grammage, c.laize
+            FROM commandes c
+            LEFT JOIN produits p ON c.produit_id = p.id
+            WHERE c.code_article IS NULL OR c.code_article = ''
+        """)
+        orders_without_code = [dict(row) for row in cursor.fetchall()]
+        
+        generated = 0
+        failed = 0
+        results = []
+        
+        for order in orders_without_code:
+            code = None
+            
+            # Try from specific fields
+            if order.get('type_papier') or order.get('grammage') or order.get('laize'):
+                code = generate_article_code(
+                    paper_type=order.get('type_papier'),
+                    grammage=order.get('grammage'),
+                    laize=order.get('laize')
+                )
+            
+            # If no specific fields, try from description
+            if not code or len(code) <= 2:
+                description = f"{order.get('nature_produit', '')} {order.get('produit_type', '')}"
+                code = suggest_article_code_from_description(description)
+            
+            if code and len(code) > 2:
+                db.update_order(order['id'], {'code_article': code})
+                generated += 1
+                results.append({'id': order['id'], 'code': code, 'status': 'success'})
+            else:
+                failed += 1
+                results.append({'id': order['id'], 'code': None, 'status': 'failed'})
+        
+        return jsonify({
+            'success': True,
+            'generated': generated,
+            'failed': failed,
+            'total_processed': len(orders_without_code),
+            'results': results[:50]  # Limit results for response size
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/orders/sage-stats')
+def api_sage_stats():
+    """Get SAGE X3 export statistics."""
+    try:
+        cursor = db.connection.cursor()
+        
+        # Total orders
+        cursor.execute("SELECT COUNT(*) FROM commandes")
+        total = cursor.fetchone()[0]
+        
+        # Orders with code article
+        cursor.execute("SELECT COUNT(*) FROM commandes WHERE code_article IS NOT NULL AND code_article != ''")
+        with_code = cursor.fetchone()[0]
+        
+        # Orders without code article
+        without_code = total - with_code
+        
+        # Validated orders ready for export
+        cursor.execute("SELECT COUNT(*) FROM commandes WHERE statut = 'validee'")
+        validated = cursor.fetchone()[0]
+        
+        # Orders with complete SAGE fields
+        cursor.execute("""
+            SELECT COUNT(*) FROM commandes 
+            WHERE code_article IS NOT NULL 
+            AND grammage IS NOT NULL 
+            AND laize IS NOT NULL
+        """)
+        complete_sage = cursor.fetchone()[0]
+        
+        # Group by code article patterns
+        cursor.execute("""
+            SELECT code_article, COUNT(*) as count 
+            FROM commandes 
+            WHERE code_article IS NOT NULL AND code_article != ''
+            GROUP BY code_article 
+            ORDER BY count DESC 
+            LIMIT 10
+        """)
+        top_codes = [dict(row) for row in cursor.fetchall()]
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_orders': total,
+                'with_code_article': with_code,
+                'without_code_article': without_code,
+                'validated': validated,
+                'complete_sage_fields': complete_sage,
+                'completion_rate': round(with_code / total * 100, 1) if total > 0 else 0
+            },
+            'top_codes': top_codes
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/orders/<int:order_id>/sage-fields', methods=['PUT'])
+def api_update_sage_fields(order_id):
+    """Update SAGE X3 specific fields for an order."""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Only allow SAGE-related fields
+        allowed_fields = [
+            'code_article', 'code_client', 'site_vente', 'ligne_commande',
+            'quantite_livree', 'reste_a_livrer', 'quantite_facturee',
+            'type_sac', 'format_sac', 'type_papier', 'grammage', 'laize',
+            'impression_client', 'commercial'
+        ]
+        
+        sage_data = {k: v for k, v in data.items() if k in allowed_fields}
+        
+        if not sage_data:
+            return jsonify({'success': False, 'error': 'No valid SAGE fields provided'}), 400
+        
+        # Auto-recalculate reste_a_livrer
+        if 'quantite_livree' in sage_data:
+            order = db.get_order(order_id)
+            if order:
+                quantite = order.get('quantite', 0) or 0
+                livree = sage_data.get('quantite_livree', 0) or 0
+                sage_data['reste_a_livrer'] = quantite - livree
+        
+        db.update_order(order_id, sage_data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Champs SAGE X3 mis à jour',
+            'updated_fields': list(sage_data.keys())
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============== ANALYTICS PAGES ==============
@@ -608,6 +860,22 @@ def export_excel():
     return send_file(filepath, as_attachment=True, download_name='commandes.xlsx')
 
 
+@app.route('/export/excel/sage')
+def export_excel_sage():
+    """Export orders to Excel in SAGE X3 compatible format."""
+    reporter = ReportGenerator(db)
+    filters = {}
+    if request.args.get('status'):
+        filters['status'] = request.args.get('status')
+    if request.args.get('date_from'):
+        filters['date_from'] = request.args.get('date_from')
+    if request.args.get('date_to'):
+        filters['date_to'] = request.args.get('date_to')
+    
+    filepath = reporter.export_to_excel_sage(filters=filters if filters else None)
+    return send_file(filepath, as_attachment=True, download_name='commandes_sage_x3.xlsx')
+
+
 @app.route('/export/csv')
 def export_csv():
     """Export orders to CSV."""
@@ -626,6 +894,22 @@ def export_pdf():
     reporter = ReportGenerator(db)
     filepath = reporter.generate_pdf_report()
     return send_file(filepath, as_attachment=True, download_name='rapport_commandes.pdf')
+
+
+# ============== SAGE X3 EXPORT PAGE ==============
+
+@app.route('/sage')
+def sage_export_page():
+    """SAGE X3 export page with preview and options."""
+    stats = db.get_stats()
+    orders = db.get_all_orders()
+    
+    # Count orders with code_article
+    cursor = db.connection.cursor()
+    cursor.execute("SELECT COUNT(*) FROM commandes WHERE code_article IS NOT NULL AND code_article != ''")
+    stats['with_code_article'] = cursor.fetchone()[0]
+    
+    return render_template('sage_export.html', stats=stats, orders=orders)
 
 
 # ============== API ANALYTICS ==============

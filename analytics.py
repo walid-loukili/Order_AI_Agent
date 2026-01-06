@@ -369,8 +369,121 @@ class ReportGenerator:
     def __init__(self, db: DatabaseManager):
         self.db = db
     
+    def export_to_excel_sage(self, filepath="exports/commandes_sage.xlsx", filters=None):
+        """Export orders to Excel file in SAGE X3 compatible format."""
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        cursor = self.db.connection.cursor()
+        
+        # SAGE X3 compatible query with all fields
+        query = """
+            SELECT 
+                c.numero_commande as "Numéro commande",
+                c.ligne_commande as "Ligne commande",
+                c.site_vente as "Site de vente",
+                c.code_client as "Code client",
+                cl.nom as "Raison sociale",
+                c.code_article as "Code article",
+                c.nature_produit as "Désignation",
+                c.date_commande as "Date commande",
+                c.date_livraison as "Date livraison prévue",
+                c.quantite as "Qtée commandée US",
+                c.quantite_livree as "Qté Livrée US",
+                c.reste_a_livrer as "Reste à livrer US",
+                c.quantite_facturee as "Qtée facturée US",
+                c.commercial as "Commercial",
+                c.type_sac as "Type SAC",
+                c.format_sac as "Format LAR.PRE.LON",
+                c.type_papier as "Type de papier",
+                c.grammage as "Grammage",
+                c.laize as "Laize",
+                c.impression_client as "Impression client",
+                c.prix_unitaire as "Prix unitaire",
+                c.prix_total as "Prix total",
+                c.devise as "Devise",
+                c.statut as "Statut",
+                c.confiance as "Confiance IA (%)",
+                c.source as "Source",
+                c.created_at as "Date création"
+            FROM commandes c
+            LEFT JOIN clients cl ON c.client_id = cl.id
+            LEFT JOIN produits p ON c.produit_id = p.id
+        """
+        
+        if filters:
+            conditions = []
+            params = []
+            if filters.get("status"):
+                conditions.append("c.statut = ?")
+                params.append(filters["status"])
+            if filters.get("client_id"):
+                conditions.append("c.client_id = ?")
+                params.append(filters["client_id"])
+            if filters.get("date_from"):
+                conditions.append("c.created_at >= ?")
+                params.append(filters["date_from"])
+            if filters.get("date_to"):
+                conditions.append("c.created_at <= ?")
+                params.append(filters["date_to"])
+            
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            
+            query += " ORDER BY c.created_at DESC"
+            cursor.execute(query, params)
+        else:
+            query += " ORDER BY c.created_at DESC"
+            cursor.execute(query)
+        
+        columns = [description[0] for description in cursor.description]
+        data = cursor.fetchall()
+        
+        df = pd.DataFrame(data, columns=columns)
+        
+        # Create Excel with formatting
+        with pd.ExcelWriter(filepath, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name="Commandes SAGE X3")
+            
+            # Get workbook and worksheet
+            workbook = writer.book
+            worksheet = writer.sheets["Commandes SAGE X3"]
+            
+            # Apply header formatting
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            
+            header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+            header_font = Font(color="FFFFFF", bold=True, size=10)
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            for col_num, column_title in enumerate(columns, 1):
+                cell = worksheet.cell(row=1, column=col_num)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                cell.border = thin_border
+            
+            # Auto-adjust column widths
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 30)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        return filepath
+    
     def export_to_excel(self, filepath="exports/commandes.xlsx", filters=None):
-        """Export orders to Excel file."""
+        """Export orders to Excel file (standard format)."""
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         cursor = self.db.connection.cursor()
@@ -379,18 +492,33 @@ class ReportGenerator:
             SELECT 
                 c.id,
                 c.numero_commande,
+                c.ligne_commande,
+                c.site_vente,
+                c.code_client,
                 cl.nom as client,
+                c.code_article,
                 p.type as produit,
                 c.nature_produit,
                 c.quantite,
                 c.unite,
+                c.quantite_livree,
+                c.reste_a_livrer,
+                c.quantite_facturee,
                 c.prix_unitaire,
                 c.prix_total,
                 c.devise,
                 c.date_commande,
                 c.date_livraison,
+                c.commercial,
+                c.type_sac,
+                c.format_sac,
+                c.type_papier,
+                c.grammage,
+                c.laize,
+                c.impression_client,
                 c.statut,
                 c.confiance,
+                c.source,
                 c.created_at
             FROM commandes c
             LEFT JOIN clients cl ON c.client_id = cl.id

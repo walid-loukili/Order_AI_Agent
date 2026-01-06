@@ -112,13 +112,59 @@ Projet_innovation/
 │   ├── whatsapp.html       # Stats WhatsApp
 │   └── process.html        # Traitement emails avec progress bar
 │
+├── article_codes.py        # 🆕 Gestionnaire codes articles SAGE X3
 ├── backups/                # Dossier des sauvegardes
 │   ├── backup_*.db.gz      # Sauvegardes compressées
 │   └── backup_history.json # Historique
 │
 ├── whatsapp_media/         # Médias WhatsApp téléchargés
 ├── attachments/            # Pièces jointes emails
-└── exports/                # Fichiers exportés
+└── exports/                # Fichiers exportés (Excel SAGE X3, CSV, PDF)
+```
+
+---
+
+## 🔗 Intégration SAGE X3 (Préparation API)
+
+Le système est préparé pour une future intégration avec l'API SAGE X3. Les données des commandes sont structurées pour être compatibles avec le format SAGE X3 :
+
+### Champs compatibles SAGE X3
+
+| Champ TECPAP | Champ SAGE X3 | Description |
+|--------------|---------------|-------------|
+| `numero_commande` | Numéro commande | Référence unique |
+| `ligne_commande` | Ligne commande | Numéro de ligne (défaut: 1) |
+| `site_vente` | Site de vente | Code site (défaut: SXP) |
+| `code_client` | Code client | Format: CL00001 |
+| `client_nom` | Raison sociale | Nom du client |
+| `code_article` | Code article | Ex: KB100L28MON |
+| `nature_produit` | Désignation | Description produit |
+| `quantite` | Qtée commandée | Quantité commandée |
+| `quantite_livree` | Qté Livrée | Quantité livrée |
+| `reste_a_livrer` | Reste à livrer | Calculé automatiquement |
+| `commercial` | Commercial | Nom commercial |
+| `type_sac` | Type SAC | KRAFT, KRAFT BLANCHI, etc. |
+| `format_sac` | Format LAR.PRE.LON | Dimensions du sac |
+| `grammage` | Grammage | En g/m² |
+| `laize` | Laize | En cm |
+
+### Format des codes articles TECPAP
+
+```
+[TYPE][GRAMMAGE]L[LAIZE][FOURNISSEUR]
+
+Exemples:
+- KB100L28MON = Kraft Blanchi 100g/m² Laize 28cm MONDI
+- KE80L25 = Kraft Écru 80g/m² Laize 25cm
+```
+
+### Export SAGE X3
+
+```bash
+# Via l'interface web
+GET /export/excel/sage
+
+# Génère un fichier Excel avec les colonnes SAGE X3
 ```
 
 ---

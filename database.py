@@ -91,21 +91,35 @@ class DatabaseManager:
             )
         """)
         
-        # Create Orders table
+        # Create Orders table (compatible SAGE X3)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS commandes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 numero_commande TEXT UNIQUE,
+                ligne_commande INTEGER DEFAULT 1,
+                site_vente TEXT DEFAULT 'SXP',
                 client_id INTEGER,
+                code_client TEXT,
                 produit_id INTEGER,
+                code_article TEXT,
                 nature_produit TEXT,
                 quantite REAL,
-                unite TEXT,
+                unite TEXT DEFAULT 'US',
+                quantite_livree REAL DEFAULT 0,
+                reste_a_livrer REAL,
+                quantite_facturee REAL DEFAULT 0,
                 prix_unitaire REAL,
                 prix_total REAL,
                 devise TEXT DEFAULT 'MAD',
                 date_commande DATE,
                 date_livraison DATE,
+                commercial TEXT DEFAULT 'DIVERS',
+                type_sac TEXT,
+                format_sac TEXT,
+                type_papier TEXT,
+                grammage INTEGER,
+                laize INTEGER,
+                impression_client TEXT,
                 informations_supplementaires TEXT,
                 confiance INTEGER,
                 statut TEXT DEFAULT 'en_attente',
@@ -141,6 +155,32 @@ class DatabaseManager:
             self.connection.commit()
         except:
             pass
+        
+        # Add SAGE X3 compatible columns
+        sage_columns = [
+            ("ligne_commande", "INTEGER DEFAULT 1"),
+            ("site_vente", "TEXT DEFAULT 'SXP'"),
+            ("code_client", "TEXT"),
+            ("code_article", "TEXT"),
+            ("quantite_livree", "REAL DEFAULT 0"),
+            ("reste_a_livrer", "REAL"),
+            ("quantite_facturee", "REAL DEFAULT 0"),
+            ("commercial", "TEXT DEFAULT 'DIVERS'"),
+            ("type_sac", "TEXT"),
+            ("format_sac", "TEXT"),
+            ("type_papier", "TEXT"),
+            ("grammage", "INTEGER"),
+            ("laize", "INTEGER"),
+            ("impression_client", "TEXT"),
+            ("updated_at", "TIMESTAMP")
+        ]
+        
+        for col_name, col_def in sage_columns:
+            try:
+                cursor.execute(f"ALTER TABLE commandes ADD COLUMN {col_name} {col_def}")
+                self.connection.commit()
+            except:
+                pass
         
         # Create Logs table
         cursor.execute("""
@@ -333,26 +373,52 @@ class DatabaseManager:
         if order_data.get('type_produit'):
             product = self.get_product_by_type(order_data['type_produit'])
         
-        # Insert order
+        # Calculate reste_a_livrer
+        quantite = order_data.get('quantite') or 0
+        quantite_livree = order_data.get('quantite_livree') or 0
+        reste_a_livrer = quantite - quantite_livree
+        
+        # Generate code_client if not provided (format: CL + id padded to 5 digits)
+        code_client = order_data.get('code_client') or f"CL{str(client['id']).zfill(5)}"
+        
+        # Insert order with SAGE X3 compatible fields
         cursor.execute("""
             INSERT INTO commandes (
-                numero_commande, client_id, produit_id, nature_produit,
-                quantite, unite, prix_unitaire, prix_total, devise,
-                date_commande, date_livraison, informations_supplementaires,
-                confiance, source, email_id, email_subject, email_from, whatsapp_from
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                numero_commande, ligne_commande, site_vente, client_id, code_client,
+                produit_id, code_article, nature_produit,
+                quantite, unite, quantite_livree, reste_a_livrer, quantite_facturee,
+                prix_unitaire, prix_total, devise,
+                date_commande, date_livraison, commercial,
+                type_sac, format_sac, type_papier, grammage, laize, impression_client,
+                informations_supplementaires, confiance, source, 
+                email_id, email_subject, email_from, whatsapp_from
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             order_data.get('numero_commande'),
+            order_data.get('ligne_commande', 1),
+            order_data.get('site_vente', 'SXP'),
             client['id'],
+            code_client,
             product['id'] if product else None,
+            order_data.get('code_article'),
             order_data.get('nature_produit'),
-            order_data.get('quantite'),
-            order_data.get('unite'),
+            quantite,
+            order_data.get('unite', 'US'),
+            quantite_livree,
+            reste_a_livrer,
+            order_data.get('quantite_facturee', 0),
             order_data.get('prix_unitaire'),
             order_data.get('prix_total'),
             order_data.get('devise', 'MAD'),
             order_data.get('date_commande'),
             order_data.get('date_livraison'),
+            order_data.get('commercial', 'DIVERS'),
+            order_data.get('type_sac'),
+            order_data.get('format_sac'),
+            order_data.get('type_papier'),
+            order_data.get('grammage'),
+            order_data.get('laize'),
+            order_data.get('impression_client'),
             order_data.get('informations_supplementaires'),
             order_data.get('confiance'),
             order_data.get('source', 'email'),
